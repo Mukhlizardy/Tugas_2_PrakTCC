@@ -1,7 +1,6 @@
-// components/List.js
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios"; // Make sure to install axios
+import axios from "axios";
 
 function List() {
   const [notes, setNotes] = useState([]);
@@ -9,28 +8,30 @@ function List() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch notes from the backend API
     const fetchNotes = async () => {
       try {
         const response = await axios.get("http://localhost:5000/notes");
-        // Transform the data to match the expected format in your component
         const formattedNotes = response.data.map((note) => {
-          let items = [];
+          // Try to parse content and extract meaningful string
+          let displayContent = note.content;
           try {
-            // Try to parse the content as JSON (if it contains items)
-            items = JSON.parse(note.content);
+            const parsedContent = JSON.parse(note.content);
+            // If it's an array of objects, extract a readable string
+            if (Array.isArray(parsedContent)) {
+              displayContent = parsedContent
+                .map((item) => `${item.name || "Item"} (${item.quantity || 1})`)
+                .join(", ");
+            }
           } catch (e) {
-            // If content is not valid JSON, just use it as a string
-            console.log("Content is not valid JSON:", e);
+            // If parsing fails, use original content
+            console.log("Content parsing error:", e);
           }
 
           return {
             id: note.id,
             title: note.title,
-            content: note.content,
-            items: Array.isArray(items) ? items : [],
+            displayContent: displayContent,
             createdAt: note.createdAt || new Date().toISOString(),
-            updatedAt: note.updatedAt || new Date().toISOString(),
           };
         });
 
@@ -49,9 +50,7 @@ function List() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this note?")) {
       try {
-        // Delete note through the API
         await axios.delete(`http://localhost:5000/notes/${id}`);
-        // Update the UI by removing the deleted note
         setNotes(notes.filter((note) => note.id !== id));
       } catch (err) {
         console.error("Error deleting note:", err);
@@ -114,7 +113,7 @@ function List() {
                   <div className="card-content">
                     <div className="content">
                       <p className="has-text-grey">
-                        {note.items ? `${note.content}` : "No items"}
+                        {note.displayContent || "No items"}
                       </p>
                       <p className="has-text-grey is-size-7">
                         Created: {new Date(note.createdAt).toLocaleDateString()}
